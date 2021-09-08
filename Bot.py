@@ -7,7 +7,6 @@ from Processors.user_recognition import user_recognition
 
 bot = telebot.TeleBot('1879041775:AAG14Vz9P4AP4hjOGOOwYKbbFJGFSrWQEgs')
 stop = ['все', 'Все', 'ВСЕ', 'ВСе', 'всё', 'ВСё', 'ВСЁ', 'Всё', 'dct', 'Dct', 'DCt', 'DCT', 'dc`', 'Dc`', 'DC`', 'DC~']
-lists = ['lists', 'create', 'add']
 
 
 @bot.message_handler(commands=['start'])
@@ -42,7 +41,7 @@ def send_welcome(message):
                     f'/math – разная матиматика\n' \
                     f'/stuff – всякие штуки\n' \
                     f'/name – изменить свое имя\n' \
-                    f'/lists – личные списки\n' \
+                    f'/lists – личные списки\n'\
                     f'\n' \
                     f'А еще могу говорить.'
         log(message.text, message.from_user.username, send_mess)
@@ -355,41 +354,123 @@ def math_handler(message):
         bot.register_next_step_handler(message, fib_call)
 
 
-@bot.message_handler(commands=lists)
-def lists_handler(message):
-    def add(message, list_name):
-        print('add', message.text, list_name)
-    if message.text == '/lists':
-        add = '\n/create – создать список'
-        from lists_sql import lists_checker
-        send_mess, commands = lists_checker(message)
-        send_mess += add
-        if commands == None:
+@bot.message_handler(commands=['lists'])
+def list_handler(message):
+    basket = ['Корзина', 'корзина', 'rjhpbyf', 'Rjhpbyf']
+    restore_pls = ['Восстанови', 'восстанови', 'Востанови', 'востанови', 'восстановить', 'Восстановить', 'востановить', 'Востановить']
+    user_id = message.from_user.id
+
+    from Processors.Lists.lists import your_lists
+    send_mess = your_lists(user_id)  # возвращает готовое сообщение со списками, либо "у вас нет списков"
+    bot.send_message(message.chat.id, send_mess)
+
+    def what_to_do(message):
+        if message.text.startswith('удали') or message.text.startswith('Удали'):
+            '''Удаление списка'''
+            from Processors.Lists.lists import delete_list
+            send_mess = delete_list(user_id, message.text)  # перемещает список в корзину, готовит ответное сообщение
             bot.send_message(message.chat.id, send_mess)
+            time.sleep(1.5)  # немного ждет, затем кидает список списков
+            list_handler(message)
+
+        elif message.text in basket:
+            '''Показывает содержание корзины. Корзина основана на изменении user_id (к нему приписывается 55555 в конце,
+             что и означает, что этот список в корзине)'''
+            from Processors.Lists.lists import basket_lists
+            basket_id = int(str(user_id) + '55555')  # приписывает к id 55555
+            send_mess = basket_lists(basket_id)  # basket_id передается в функцию, в ответе готовое сообщение
+            bot.send_message(message.chat.id, send_mess)
+
+            def restore(message):
+                for el in restore_pls:
+                    if message.text.startswith(el):
+                        from Processors.Lists.lists import restore_from_basket
+                        send_mess = restore_from_basket(basket_id, message.text)
+                        bot.send_message(message.chat.id, send_mess)
+                        time.sleep(1.5)
+                        list_handler(message)
+                        return
+
+                list_handler(message)
+
+            if send_mess == 'Ваша корзина пуста':
+                time.sleep(1.5)
+                list_handler(message)
+            else:
+                bot.register_next_step_handler(message, restore)
+
+        elif message.text.startswith('Новый список') or message.text.startswith('новый список'):
+            send_mess = 'Какое будет название списка?'
+            bot.send_message(message.chat.id, send_mess)
+
+            def new_list_creation(message):
+                list_name = message.text
+                send_mess = f'Отлично, список {list_name} почти готов. Чтобы наполнить его, пиши элементы, ' \
+                            f'каждый с новой строки'
+                bot.send_message(message.chat.id, send_mess)
+
+                def new_list_elements(message):
+                    from Processors.Lists.lists import new_list, items_in_list
+                    send_mess = new_list(user_id, list_name, message)
+                    bot.send_message(message.chat.id, send_mess)
+                    time.sleep(1.5)
+                    list_handler(message)
+
+                bot.register_next_step_handler(message, new_list_elements)
+            bot.register_next_step_handler(message, new_list_creation)
+
+
         else:
-            global lists
-            for el in commands:
-                lists.append(el)
+            from Processors.Lists.lists import items_in_list
+            send_mess = items_in_list(user_id, message.text)
             bot.send_message(message.chat.id, send_mess)
 
-    elif message.text == '/create':
-        send_mess = 'Задайте имя списка'
-        bot.send_message(message.chat.id, send_mess)
+            def delete_or_expand(message):
+                from Processors.Lists.lists import delete_expand
+                delete_expand(user_id, message.text)
 
-        def l_creating(message):
-            from lists_sql import list_creating
-            send_mess, commands = list_creating(message)
-            global lists
-            for el in commands:
-                lists.append(el)
-            bot.send_message(message.chat.id, send_mess)
-        bot.register_next_step_handler(message, l_creating)
+            if message.text.startswith('удали') or message.text.startswith('Удали'):
+                bot.register_next_step_handler(message, delete_or_expand)
 
-    else:
-        from lists_sql import items
-        send_mess, list_name = items(message)
-        bot.send_message(message.chat.id, send_mess)
-        bot.register_next_step_handler(message, add, list_name)
+    bot.register_next_step_handler(message, what_to_do)
+
+
+
+
+# def lists_handler(message):
+#     def add(message, list_name):
+#         print('add', message.text, list_name)
+#     if message.text == '/lists':
+#         add = '\n/create – создать список'
+#         from lists_sql import lists_checker
+#         send_mess, commands = lists_checker(message)
+#         send_mess += add
+#         if commands == None:
+#             bot.send_message(message.chat.id, send_mess)
+#         else:
+#             global lists
+#             for el in commands:
+#                 lists.append(el)
+#             bot.send_message(message.chat.id, send_mess)
+#
+#     elif message.text == '/create':
+#         send_mess = 'Задайте имя списка'
+#         bot.send_message(message.chat.id, send_mess)
+#
+#         def l_creating(message):
+#             from lists_sql import list_creating
+#             send_mess, commands = list_creating(message)
+#             global lists
+#             for el in commands:
+#                 lists.append(el)
+#             bot.send_message(message.chat.id, send_mess)
+#         bot.register_next_step_handler(message, l_creating)
+#
+#     else:
+#         from lists_sql import items
+#         send_mess, list_name = items(message)
+#         bot.send_message(message.chat.id, send_mess)
+#         bot.register_next_step_handler(message, add, list_name)
 
 
 
