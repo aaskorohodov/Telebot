@@ -358,11 +358,35 @@ def math_handler(message):
 def list_handler(message):
     basket = ['Корзина', 'корзина', 'rjhpbyf', 'Rjhpbyf']
     restore_pls = ['Восстанови', 'восстанови', 'Востанови', 'востанови', 'восстановить', 'Восстановить', 'востановить', 'Востановить']
+    del_pls = ['удали', 'Удали', 'удали:', 'Удали:', 'удалить', 'Удалить', 'удалить:', 'Удалить:', 'elfkb', 'elfkbnm', 'Elfkb', 'Elfkbnm']
+    add_pls = ['добавь', 'Добавь', 'добавить', 'Добавить', 'добавь:', 'Добавь:', 'добавить:', 'Добавить:']
+    random_pls = ['рандом', 'Рандом', 'hfyljv', 'Hfyljv']
     user_id = message.from_user.id
 
     from Processors.Lists.lists import your_lists
     send_mess = your_lists(user_id)  # возвращает готовое сообщение со списками, либо "у вас нет списков"
     bot.send_message(message.chat.id, send_mess)
+    if send_mess == 'У вас нет списков, давайте сделаем их.':
+        time.sleep(1)
+        send_mess = 'Какое будет название списка?'
+        bot.send_message(message.chat.id, send_mess)
+
+        def first_list_creation(message):
+            list_name = message.text
+            send_mess = f'Отлично, список {list_name} почти готов. Чтобы наполнить его, пиши элементы, ' \
+                        f'каждый с новой строки'
+            bot.send_message(message.chat.id, send_mess)
+
+            def first_list_elements(message):
+                from Processors.Lists.lists import new_list, items_in_list
+                send_mess = new_list(user_id, list_name, message)
+                bot.send_message(message.chat.id, send_mess)
+                time.sleep(1.5)
+                list_handler(message)
+
+            bot.register_next_step_handler(message, first_list_elements)
+        bot.register_next_step_handler(message, first_list_creation)
+
 
     def what_to_do(message):
         if message.text.startswith('удали') or message.text.startswith('Удали'):
@@ -377,15 +401,14 @@ def list_handler(message):
             '''Показывает содержание корзины. Корзина основана на изменении user_id (к нему приписывается 55555 в конце,
              что и означает, что этот список в корзине)'''
             from Processors.Lists.lists import basket_lists
-            basket_id = int(str(user_id) + '55555')  # приписывает к id 55555
-            send_mess = basket_lists(basket_id)  # basket_id передается в функцию, в ответе готовое сообщение
+            send_mess = basket_lists(user_id)
             bot.send_message(message.chat.id, send_mess)
 
             def restore(message):
                 for el in restore_pls:
                     if message.text.startswith(el):
                         from Processors.Lists.lists import restore_from_basket
-                        send_mess = restore_from_basket(basket_id, message.text)
+                        send_mess = restore_from_basket(user_id, message.text)
                         bot.send_message(message.chat.id, send_mess)
                         time.sleep(1.5)
                         list_handler(message)
@@ -419,59 +442,69 @@ def list_handler(message):
                 bot.register_next_step_handler(message, new_list_elements)
             bot.register_next_step_handler(message, new_list_creation)
 
-
         else:
+            print('else running')
             from Processors.Lists.lists import items_in_list
-            send_mess = items_in_list(user_id, message.text)
+            send_mess, list_name = items_in_list(user_id, message.text)
+            print(list_name)
             bot.send_message(message.chat.id, send_mess)
 
-            def delete_or_expand(message):
-                from Processors.Lists.lists import delete_expand
-                delete_expand(user_id, message.text)
+            def items_handler(message):
+                print('items_handler running')
+                for el in del_pls:
+                    if message.text.startswith(el):
+                        from Processors.Lists.lists import delete_items
+                        send_mess = delete_items(user_id, message.text, list_name)
+                        bot.send_message(message.chat.id, send_mess)
+                        return
 
-            if message.text.startswith('удали') or message.text.startswith('Удали'):
-                bot.register_next_step_handler(message, delete_or_expand)
+                for el in add_pls:
+                    if message.text.startswith(el):
+                        from Processors.Lists.lists import add_items, your_lists
+                        send_mess = add_items(user_id, message.text, list_name)
+                        bot.send_message(message.chat.id, send_mess)
+                        time.sleep(1.5)
+                        list_handler(message)
+                        return
+
+                for el in basket:
+                    if message.text.startswith(el):
+                        print('Restore items running')
+                        from Processors.Lists.lists import basket_items
+                        send_mess = basket_items(user_id, list_name)
+                        bot.send_message(message.chat.id, send_mess)
+                        if send_mess.endswith('пуста'):
+                            send_mess = '/lists'
+                            bot.send_message(message.chat.id, send_mess)
+
+                        def restore_or_skip(message):
+                            for el in restore_pls:
+                                if message.text.startswith(el):
+                                    print('restore_or_skip running')
+                                    from Processors.Lists.lists import restore_items
+                                    send_mess = restore_items(user_id, list_name, message.text)
+                                    bot.send_message(message.chat.id, send_mess)
+                                    time.sleep(1.5)
+                                    list_handler(message)
+                                    return
+
+                            list_handler(message)
+
+                        bot.register_next_step_handler(message, restore_or_skip)
+
+                for el in random_pls:
+                    if message.text.startswith(el):
+                        from Processors.Lists.lists import random_item
+                        random_item(user_id, list_name, message)
+                        bot.send_message(message.chat.id, 'Готово!')
+                        time.sleep(2)
+                        bot.send_message(message.chat.id, '/lists')
+
+
+
+            bot.register_next_step_handler(message, items_handler)
 
     bot.register_next_step_handler(message, what_to_do)
-
-
-
-
-# def lists_handler(message):
-#     def add(message, list_name):
-#         print('add', message.text, list_name)
-#     if message.text == '/lists':
-#         add = '\n/create – создать список'
-#         from lists_sql import lists_checker
-#         send_mess, commands = lists_checker(message)
-#         send_mess += add
-#         if commands == None:
-#             bot.send_message(message.chat.id, send_mess)
-#         else:
-#             global lists
-#             for el in commands:
-#                 lists.append(el)
-#             bot.send_message(message.chat.id, send_mess)
-#
-#     elif message.text == '/create':
-#         send_mess = 'Задайте имя списка'
-#         bot.send_message(message.chat.id, send_mess)
-#
-#         def l_creating(message):
-#             from lists_sql import list_creating
-#             send_mess, commands = list_creating(message)
-#             global lists
-#             for el in commands:
-#                 lists.append(el)
-#             bot.send_message(message.chat.id, send_mess)
-#         bot.register_next_step_handler(message, l_creating)
-#
-#     else:
-#         from lists_sql import items
-#         send_mess, list_name = items(message)
-#         bot.send_message(message.chat.id, send_mess)
-#         bot.register_next_step_handler(message, add, list_name)
-
 
 
 @bot.message_handler(commands=['name'])

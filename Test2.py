@@ -1,4 +1,5 @@
-userid = 12345678955555
-restored_id = int(str(userid) + '55555')
-print(basketid)
-print(type(basketid))
+a = 10
+
+while a > 0:
+    print(a)
+    a -= 1
