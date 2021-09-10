@@ -37,31 +37,56 @@ def technical():
 
 def your_lists(user_id):
     '''Эта функция показывает все списки в базе'''
+
     conn = sqlite3.connect(r'Processors/Lists/my_lists.db')
     '''Так как функция импортируется и вызывается из другого места (Bot.py), то нужно указать путь до базы'''
+
     cur = conn.cursor()
     cur.execute(f'SELECT lists.list_name FROM lists WHERE userid = {user_id}')
     my_lists = cur.fetchall()
     '''my_lists = список кортежей, где каждый кортеж = название списка. Ввиду конструкции базы, где строка = id, список
     и содержание списка, будут повторы, то есть название списка будет повторятся столько раз, сколько есть в этом
     списке элементов. С этим разберемся ниже.'''
+
     if len(my_lists) == 0:
         return 'У вас нет списков, давайте сделаем их.'
+
     else:
         lists = ''
         lists_counter = []
         '''lists = финальная строка, которую отправим пользователю. lists_counter нужен, чтобы не повторять список,
-        ведь как было сказано выше, тут будут повторы названия списка. *my_lists = список кортежей, поэтому:'''
+        ведь как было сказано выше, тут будут повторы названия списка.
+        *my_lists = список кортежей, поэтому:...'''
         for tupl in my_lists:
-            '''Для каждого кортежа в списке (а в кортеже одно название списка)'''
+            '''...для каждого кортежа в списке (а в кортеже одно название списка)...'''
             for el in tupl:
-                '''Распаковываем кортеж'''
+                '''...распаковываем кортеж'''
                 if el not in lists_counter:
                     '''Если это название списка еще не встречалось:'''
                     lists += f'– {el}\n'
                     lists_counter.append(el)
                     '''Тут собирается финальная строка и список с названиями списков'''
-        return f'Ваши списки:\n{lists}\nМожно:\n' \
+
+        def all_lists_you_have():
+            basket_lists = 0
+            lists_in_use = 0
+            cur.execute(f'SELECT count(DISTINCT list_name) FROM lists WHERE userid = {user_id}')
+
+            for el in cur:
+                lists_in_use = el[0]
+
+            cur.execute(f'SELECT count(DISTINCT list_name) FROM lists_basket WHERE userid = {user_id}')
+            for el in cur:
+                basket_lists = el[0]
+
+            return lists_in_use, basket_lists
+
+        lists_in_use, basket_lists = all_lists_you_have()
+
+        return f'Ваши списки:\n{lists}\n\n' \
+               f'Всего списков: {lists_in_use}\n' \
+               f'Списков в корзине: {basket_lists}\n\n' \
+               f'Можно:\n' \
                f'– написать название списка, чтобы я показал что в нем\n' \
                f'– написать "Удали НАЗВАНИЕ СПИСКА"\n'\
                f'– написать "Новый список"\n'\
@@ -123,8 +148,8 @@ def items_in_list(user_id, list_name):
         return mess, list_name
 
     else:
-        mess = f'У вас нет списка {list_name}\n/lists'
-        return mess
+        mess = f'У вас нет списка {list_name}'
+        return mess, list_name
 
 
 def random_item(user_id, list_name, message):
@@ -485,42 +510,3 @@ def restore_items(user_id, list_name, text):
 
     print('mess is finally =', mess)
     return mess
-
-
-
-
-
-
-
-
-
-
-
-def insert(user_id, list, item):
-    insertion = (user_id, list, item)
-    conn = sqlite3.connect('my_lists.db')
-    cur = conn.cursor()
-    cur.execute(f'''INSERT INTO lists(userid, list_name, list_items)
-                    VALUES
-                    (?, ?, ?)''', insertion)
-    conn.commit()
-
-
-def insert_into_existing_list(user_id, my_list, mess_text):
-    items = []
-    for el in mess_text.split('\n'):
-        items.append(el)
-
-    conn = sqlite3.connect('my_lists.db')
-    cur = conn.cursor()
-    cur.execute(f'SELECT lists.list_name FROM lists WHERE userid = {user_id}')
-    all_lists = cur.fetchall()
-
-    for tupl in all_lists:
-        for el in tupl:
-            if el == my_list:
-                for el in items:
-                    insert(user_id, my_list, el)
-            else:
-                pass
-

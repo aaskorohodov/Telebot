@@ -501,8 +501,11 @@ def list_handler(message):
                         bot.send_message(message.chat.id, '/lists')
 
 
-
-            bot.register_next_step_handler(message, items_handler)
+            if send_mess.startswith('У вас нет списка'):
+                time.sleep(1.5)
+                messages(message)
+            else:
+                bot.register_next_step_handler(message, items_handler)
 
     bot.register_next_step_handler(message, what_to_do)
 
