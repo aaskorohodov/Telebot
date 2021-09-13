@@ -1,40 +1,59 @@
 import random, time, telebot
 from telebot import types
-from PIL import Image
 from Processors.log import log
 from Processors.user_recognition import user_recognition
+'''Telebot работает на декораторах. Получая сообщение, Бот идет сверху вниз, проверяя, подходит ли какой-то декоратр
+для полученного сообщения. Тут могут быть как команды (/start/help...) так и сообщения другого типа, например простой
+текст, картинки, файлы итд. Если Бот уткнулся на подходящий декоратор, то проверять следующие он уже не будет, как
+следствие, логику обработку того/иного сообщения или команды нужно прописывать внутри декоратора. Поэтому часть кода
+унесены во вспомогательные файлы, иначе слишком много строчек.'''
 
 
 bot = telebot.TeleBot('1879041775:AAG14Vz9P4AP4hjOGOOwYKbbFJGFSrWQEgs')
+# stop это список стоп-слов, которыми можно остановить ту или иную функцию
 stop = ['все', 'Все', 'ВСЕ', 'ВСе', 'всё', 'ВСё', 'ВСЁ', 'Всё', 'dct', 'Dct', 'DCt', 'DCT', 'dc`', 'Dc`', 'DC`', 'DC~']
 
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
+    '''Приветствие. Тут бот знакомится с пользователем, если прежде его не встречал и шлет список команд.'''
     from Processors.user_recognition import user_recognition
+    '''user_recognition распознает пользователя, либо отдает False, если встречает пользователя впервые'''
+
     name = user_recognition(message.from_user.id)
 
     if name == False:
+        '''Сценарий нового пользователя'''
+
         send_mess = 'Кажется, мы еще не знакомы! Как тебя зовут?'
         bot.send_message(message.from_user.id, send_mess)
-        log(message.text, message.from_user.username, send_mess)
+
+        log(message.text, message.from_user.username, send_mess)  # лог занимается записью всего, что тут происходит
 
         def whats_ur_name(message):
+            '''Записывает имя нового пользователя в базу. excl = то, что может ввести пользователь перед своим именем'''
+
             excl = ['меня', 'зовут', 'я', 'а', 'тебя', 'как', 'звать', 'name', 'my', 'зови', 'пускай', 'будет']
-            name = ''
-            for el in message.text.split():
+            name = ''  # строка, куда запишем имя. Затем передадим это имя в функцию new_user
+
+            for el in message.text.split():  # перебираем текст от пользователя, убираем ненужные куски
                 if el not in excl:
                     name += el
-            from Processors.user_recognition import new_user
+
+            from Processors.user_recognition import new_user  # стоит именно тут для наглядности процесса
+
             new_user(message.from_user.id, name)
             bot.send_message(message.from_user.id, 'Отлично, теперь давай начнем сначала')
             log(message.text, message.from_user.username, send_mess)
+
             time.sleep(2)
-            send_welcome(message)
+            send_welcome(message)  # рекурсивно вызывает саму себя, чтобы теперь отработал else (ниже)
 
         bot.register_next_step_handler(message, whats_ur_name)
 
     else:
+        '''Сценарий, когда пользователь уже знаком боту'''
+
         send_mess = f'Привет {name}! Вот что умеет этот бот:\n' \
                     f'\n' \
                     f'/start – включить бота/начать общение с начала\n' \
@@ -51,7 +70,11 @@ def send_welcome(message):
 @bot.message_handler(commands=['stuff', 'reversed', 'popka', 'time', 'pics', 'weather', 'food', 'covid', 'anagramm',
                                'letters', 'timer', 'test', 'b_day', 'translate', 'ru_eng', 'eng_ru'])
 def staff_handler(message):
+    '''Отвечает за всякие штуки (stuff, очепятка). Работает на if/elif, каждое из которых обрабатывает свою команду.
+    name используется, что (местами) персонализировано отвечать'''
+
     name = user_recognition(message.from_user.id)
+
     if message.text == '/stuff':
         send_mess = '/reversed – слова наоборот\n' \
                     '/popka – попугай\n' \
@@ -69,39 +92,54 @@ def staff_handler(message):
         bot.send_message(message.chat.id, send_mess)
 
     elif message.text == '/reversed':
+        '''Переворачивает любой текст'''
+
         send_mess = 'Все что вы напишите, будет перевернуто.\n' \
                     'Для выхода пиши "все"'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
 
         def reversed(message):
+            '''Сам код тут'''
+
             if message.text in stop:
+                '''Остановка фичи'''
+
                 send_mess = 'reversed остановлен.\n' \
                             '/start для продолжения'
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.chat.id, send_mess)
+
             else:
                 from Processors.stuff import reversed_words
+                '''reversed_words разворачивает строку и отдает ее обратно'''
+
                 send_mess = reversed_words(message.text)
                 bot.send_message(message.chat.id, send_mess)
                 log(message.text, message.from_user.username, send_mess)
-                bot.register_next_step_handler(message, reversed)
+                bot.register_next_step_handler(message, reversed)  # рекурсивно вызывает саму себя
 
         bot.register_next_step_handler(message, reversed)
 
     elif message.text == '/popka':
+        '''Попка (попугай) слегка меняет текст и отдает его пользователю'''
+
         def popca_pross(message):
             if message.text in stop:
+                '''Остановка фичи'''
+
                 send_mess = 'Popka завершен\n' \
                             '/start для продолжения'
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.from_user.id, send_mess)
+
             else:
                 from Processors.stuff import popka_talking
+
                 send_mess = popka_talking(message.text)
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.from_user.id, send_mess)
-                bot.register_next_step_handler(message, popca_pross)
+                bot.register_next_step_handler(message, popca_pross)  # вызывает саму себя
 
         send_mess = 'Пишите что хотите, когда надоест, напишите "все".'
         bot.send_message(message.chat.id, send_mess)
@@ -109,12 +147,16 @@ def staff_handler(message):
         bot.register_next_step_handler(message, popca_pross)
 
     elif message.text == '/time':
+        '''Показывает время в любом городе (почти любом)'''
+
         send_mess = 'Какой город смотрим?'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
 
         def time_get(message):
             from Processors.time import output
+            '''output делает запрос к стороннему API, чтобы достать оттуда время в каком-то городе. Так интереснее'''
+
             send_mess = output(message.text)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.chat.id, send_mess)
@@ -122,22 +164,31 @@ def staff_handler(message):
         bot.register_next_step_handler(message, time_get)
 
     elif message.text == '/pics':
-        t = [i for i in range(204)]
-        ran = str(random.choice(t))
-        name = fr'C:\Users\Аркадий\Pictures\py\1 ({ran}).JPG'
-        png = Image.open(name)
-        send_mess = 'Вот:'
+        from PIL import Image
+        '''Берет рандомную картинку из локального хранилища и кидает в пользователя'''
+
+        t = [i for i in range(204)]  # генерируем список. его длина = количество картинок
+        ran = str(random.choice(t))  # берем из списка рандомное число
+        name = fr'C:\Users\Аркадий\Pictures\py\1 ({ran}).JPG'  # подставляем его в имя файла
+        png = Image.open(name)  # открываем нужную картинку
+
+        send_mess = 'Вот:'  # кидаем в пользователя текст
         bot.send_message(message.chat.id, send_mess)
+
         log(message.text, message.from_user.username, send_mess)
-        bot.send_photo(message.from_user.id, png)
+        bot.send_photo(message.from_user.id, png)  # кидаем в пользователя картинку
 
     elif message.text == '/weather':
+        '''Делает запрос через стороннее API, получает погоду в любом городе'''
+
         send_mess = f'{name}, в каком городе ты живешь?'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.from_user.id, send_mess)
 
         def weather_pros(message):
+            '''wf_output самостоятельно готовит ответ, собирает красивую строку и отдает ее.'''
             from Processors.weather_udvanced import wf_output
+
             send_mess = wf_output(message.text)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.from_user.id, send_mess)
@@ -145,8 +196,14 @@ def staff_handler(message):
         bot.register_next_step_handler(message, weather_pros)
 
     elif message.text == '/food':
+        '''Подсказка что поесть. Работает на клавишах, которые надо нажимать. После нажатия на какую-то кнопку, готовит
+        новый набор кнопок, с другими вопросами. Тут готовится только первый набор кнопок, за остальные отвечает
+        query_handler, он внизу кода'''
+
+        # задается тип разметки для кнопок
         markup = telebot.types.InlineKeyboardMarkup()
 
+        # далее сами кнопки (3 шт), которые добавляем в разметку
         self = types.InlineKeyboardButton(text='Готовим сами', callback_data="self")
         fast = types.InlineKeyboardButton(text='Готовое дома', callback_data="fast")
         outdoor = types.InlineKeyboardButton(text='Сходить в...', callback_data="outdoor")
@@ -154,14 +211,21 @@ def staff_handler(message):
 
         send_mess = f'Что хочет {name}?'
         log(message.text, message.from_user.username, send_mess)
+
+        # метод send_message берет не только сообщение, но и подготовленную разметку, которую кидает после сообщения
         bot.send_message(message.from_user.id, send_mess, reply_markup=markup)
 
     elif message.text == '/covid':
+        '''Парсер, собирает информацию о Ковиде'''
         log(message.text, message.from_user.username)
         from Processors.covid import covid
+
+        # В отличие от многих других модулей, covid сам отправляет сообщение, так что его достаточно просто вызвать
         covid(message)
 
     elif message.text == '/anagramm':
+        '''Поиск анаграмм'''
+
         send_mess = f'{name}, дай текст, а я найду в нем анаграммы.\n' \
                     '\n' \
                     '*поддерживается только английский и русский'
@@ -169,7 +233,9 @@ def staff_handler(message):
         bot.send_message(message.from_user.id, send_mess)
 
         def anagramms_pross(message):
+            '''Механизм работы anagrams lовольно сложный, он подробно описан в другом проекте (Learning Python)'''
             from Processors.stuff import anagrams
+
             send_mess = anagrams(message.text)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.from_user.id, send_mess)
@@ -177,12 +243,15 @@ def staff_handler(message):
         bot.register_next_step_handler(message, anagramms_pross)
 
     elif message.text == '/letters':
+        '''Считает повторы букв'''
         send_mess = f'{name}, давай свой текст, а я посчитаю повторы букв'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.from_user.id, send_mess)
 
         def letters(message):
+            '''Считает повторы каждой буквы в переданном тексте'''
             from Processors.stuff import letters_counter
+
             send_mess = letters_counter(message.text)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.from_user.id, send_mess)
@@ -190,8 +259,10 @@ def staff_handler(message):
         bot.register_next_step_handler(message, letters)
 
     elif message.text == '/timer':
+        '''Ставит таймер. Таймер работает поверх сообщений, то есть можно поставить таймер и продолжит общение'''
         from Processors.timer import timer_step1
-        name = user_recognition(message.from_user.id)
+
+        name = user_recognition(message.from_user.id)  # для персонального ответа
         timer_step1(message, name)
 
     elif message.text == '/b_day':

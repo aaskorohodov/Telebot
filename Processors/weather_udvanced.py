@@ -1,9 +1,13 @@
 def wf(city):
+    '''Добывает словарь с данными о погоде'''
     import requests
     return requests.get(f'https://api.weatherapi.com/v1/forecast.json?key=fae526c9c9d24b1f8d6170008210608&q={city}&days=3&lang=ru&aqi=no&alerts=no').json()
 
 
 def date_translation(forecast_date):
+    '''Переписывает не самую красивую дату из данных API. Создает из изначальной даты список, затем меняет день и месяц
+    в самом себе (в списке) используя два словаря ниже (в словарях ключ = как было, значение = как надо), затем список
+    преобразуется обратно в строку'''
     b = list(forecast_date.split('-'))
 
     num_to_month = {'01': 'января',
@@ -58,11 +62,17 @@ def date_translation(forecast_date):
 
 
 def wf_output(city):
+    '''Добывает погоду'''
+
     try:
-        data = wf(city)
+        '''try на случай неверного названия города. Далее в разные переменные кладем нужные строки, чтобы потом собрать
+        ответ в одну строку'''
 
-        location = f"{data['location']['name']}, {data['location']['country']}"
+        data = wf(city)  # получаем словарь
 
+        location = f"{data['location']['name']}, {data['location']['country']}"  # это название города + область\штат\..
+
+        # блок ниже представляет погоду на сегодня. Тут выше детальность
         cloud_perc_current = data['current']['cloud']
         text_current = data['current']['condition']['text']
         humidity_current = data['current']['humidity']
@@ -70,6 +80,7 @@ def wf_output(city):
         temp_current = data['current']['temp_c']
         wind_speed = data['current']['wind_kph']
 
+        # каждый из блоков ниже представляет прогноз на 1 сутки вперед
         forecast1_date = data['forecast']['forecastday'][0]['date']
         forecast1_humidity = data['forecast']['forecastday'][0]['day']['avghumidity']
         forecast1_text = data['forecast']['forecastday'][0]['day']['condition']['text']
@@ -91,15 +102,18 @@ def wf_output(city):
         forecast3_max_t = data['forecast']['forecastday'][2]['day']['maxtemp_c']
         forecast3_min_t = data['forecast']['forecastday'][2]['day']['mintemp_c']
 
+        # блок if проверяет одно из значений словаря, чтобы определить, село ли солнце. Немного меняет ответ
         if is_day_current == 1:
             is_day = 'солнце над горизонтом.'
         else:
             is_day = 'солнце село, луна в небе.'
 
+        # обращается к функции (чуть выше), чтобы переписать дату покрасывше
         day1 = date_translation(forecast1_date)
         day2 = date_translation(forecast2_date)
         day3 = date_translation(forecast3_date)
 
+        # далее готовится красивый ответ
         return (f'{location}\n'
                 f'\n'
                 f'Сейчас {text_current.lower()}, {is_day}\n'
@@ -123,6 +137,10 @@ def wf_output(city):
                 f'Вероятность осадков: {forecast3_rain_chance}%\n'
                 f'Влажность: {forecast3_humidity}\n'
                 )
+
     except KeyError:
+        '''Сценарий неверного города. API вернет другой словарь (а может пустой) так что по некоторым ключам в нем 
+        будет пусто, вылезет ошибка. Ее и ловим.'''
+
         return (f'Не вижу такого города на этой планете.\n'
                 f'Попробуй еще раз /weather')
