@@ -356,6 +356,7 @@ def math_handler(message):
 
 @bot.message_handler(commands=['lists'])
 def list_handler(message):
+    '''Ворочает списками. Ниже 5 списков = слова-триггеры (команды) и user_id (чтобы показывать только ваши списки)'''
     basket = ['Корзина', 'корзина', 'rjhpbyf', 'Rjhpbyf']
     restore_pls = ['Восстанови', 'восстанови', 'Востанови', 'востанови', 'восстановить', 'Восстановить', 'востановить', 'Востановить']
     del_pls = ['удали', 'Удали', 'удали:', 'Удали:', 'удалить', 'Удалить', 'удалить:', 'Удалить:', 'elfkb', 'elfkbnm', 'Elfkb', 'Elfkbnm']
@@ -366,7 +367,8 @@ def list_handler(message):
     from Processors.Lists.lists import your_lists
     send_mess = your_lists(user_id)  # возвращает готовое сообщение со списками, либо "у вас нет списков"
     bot.send_message(message.chat.id, send_mess)
-    if send_mess == 'У вас нет списков, давайте сделаем их.':
+
+    if send_mess == 'У вас нет списков, давайте сделаем их.':  # Отрабатывает ситуацию отсутсвия списков
         time.sleep(1)
         send_mess = 'Какое будет название списка?'
         bot.send_message(message.chat.id, send_mess)
@@ -378,136 +380,185 @@ def list_handler(message):
             bot.send_message(message.chat.id, send_mess)
 
             def first_list_elements(message):
+                '''Создает список с помощью new_list, затем показывает содержание списка с помощью items_in_list,
+                затем отправляется в начало list_handler'''
                 from Processors.Lists.lists import new_list, items_in_list
+
                 send_mess = new_list(user_id, list_name, message)
                 bot.send_message(message.chat.id, send_mess)
                 time.sleep(1.5)
+
+                send_mess = items_in_list(user_id, list_name, True)
+                bot.send_message(message.chat.id, send_mess)
+                time.sleep(1.5)
+
                 list_handler(message)
 
             bot.register_next_step_handler(message, first_list_elements)
         bot.register_next_step_handler(message, first_list_creation)
 
+    else:
+        def what_to_do(message):
+            if message.text.startswith('удали') or message.text.startswith('Удали'):
+                '''Удаление списка'''
+                from Processors.Lists.lists import delete_list
 
-    def what_to_do(message):
-        if message.text.startswith('удали') or message.text.startswith('Удали'):
-            '''Удаление списка'''
-            from Processors.Lists.lists import delete_list
-            send_mess = delete_list(user_id, message.text)  # перемещает список в корзину, готовит ответное сообщение
-            bot.send_message(message.chat.id, send_mess)
-            time.sleep(1.5)  # немного ждет, затем кидает список списков
-            list_handler(message)
-
-        elif message.text in basket:
-            '''Показывает содержание корзины. Корзина основана на изменении user_id (к нему приписывается 55555 в конце,
-             что и означает, что этот список в корзине)'''
-            from Processors.Lists.lists import basket_lists
-            send_mess = basket_lists(user_id)
-            bot.send_message(message.chat.id, send_mess)
-
-            def restore(message):
-                for el in restore_pls:
-                    if message.text.startswith(el):
-                        from Processors.Lists.lists import restore_from_basket
-                        send_mess = restore_from_basket(user_id, message.text)
-                        bot.send_message(message.chat.id, send_mess)
-                        time.sleep(1.5)
-                        list_handler(message)
-                        return
-
+                send_mess = delete_list(user_id, message.text)  # перемещает список в корзину и готовит ответ
+                bot.send_message(message.chat.id, send_mess)
+                time.sleep(1.5)  # немного ждет, затем кидает в начало списков
                 list_handler(message)
 
-            if send_mess == 'Ваша корзина пуста':
-                time.sleep(1.5)
-                list_handler(message)
-            else:
-                bot.register_next_step_handler(message, restore)
+            elif message.text in basket:
+                '''Показывает содержание корзины.'''
+                from Processors.Lists.lists import basket_lists
 
-        elif message.text.startswith('Новый список') or message.text.startswith('новый список'):
-            send_mess = 'Какое будет название списка?'
-            bot.send_message(message.chat.id, send_mess)
-
-            def new_list_creation(message):
-                list_name = message.text
-                send_mess = f'Отлично, список {list_name} почти готов. Чтобы наполнить его, пиши элементы, ' \
-                            f'каждый с новой строки'
+                send_mess = basket_lists(user_id)  # готовит ответ, затем идет блок if
                 bot.send_message(message.chat.id, send_mess)
 
-                def new_list_elements(message):
-                    from Processors.Lists.lists import new_list, items_in_list
-                    send_mess = new_list(user_id, list_name, message)
-                    bot.send_message(message.chat.id, send_mess)
-                    time.sleep(1.5)
-                    list_handler(message)
+                def restore(message):
+                    '''Может либо восстановить список из корзины (блок for), либо вернуться в начало меню списков'''
 
-                bot.register_next_step_handler(message, new_list_elements)
-            bot.register_next_step_handler(message, new_list_creation)
+                    for el in restore_pls:
+                        '''Проверяет, не начинается ли сообщение с триггера "Восстанови" '''
 
-        else:
-            print('else running')
-            from Processors.Lists.lists import items_in_list
-            send_mess, list_name = items_in_list(user_id, message.text)
-            print(list_name)
-            bot.send_message(message.chat.id, send_mess)
+                        if message.text.startswith(el):
+                            from Processors.Lists.lists import restore_from_basket
 
-            def items_handler(message):
-                print('items_handler running')
-                for el in del_pls:
-                    if message.text.startswith(el):
-                        from Processors.Lists.lists import delete_items
-                        send_mess = delete_items(user_id, message.text, list_name)
-                        bot.send_message(message.chat.id, send_mess)
-                        return
-
-                for el in add_pls:
-                    if message.text.startswith(el):
-                        from Processors.Lists.lists import add_items, your_lists
-                        send_mess = add_items(user_id, message.text, list_name)
-                        bot.send_message(message.chat.id, send_mess)
-                        time.sleep(1.5)
-                        list_handler(message)
-                        return
-
-                for el in basket:
-                    if message.text.startswith(el):
-                        print('Restore items running')
-                        from Processors.Lists.lists import basket_items
-                        send_mess = basket_items(user_id, list_name)
-                        bot.send_message(message.chat.id, send_mess)
-                        if send_mess.endswith('пуста'):
-                            send_mess = '/lists'
+                            send_mess = restore_from_basket(user_id, message.text)  # восстанавливает список
                             bot.send_message(message.chat.id, send_mess)
-
-                        def restore_or_skip(message):
-                            for el in restore_pls:
-                                if message.text.startswith(el):
-                                    print('restore_or_skip running')
-                                    from Processors.Lists.lists import restore_items
-                                    send_mess = restore_items(user_id, list_name, message.text)
-                                    bot.send_message(message.chat.id, send_mess)
-                                    time.sleep(1.5)
-                                    list_handler(message)
-                                    return
+                            time.sleep(1.5)
 
                             list_handler(message)
+                            '''Так как мы в цикле, то нам нужно его прервать, в случае триггера. Это делает return.
+                            Возможна ситуация срабатывания нескольких триггеров (Удали = Удали/Удалить/Удалить:...)'''
+                            return
 
-                        bot.register_next_step_handler(message, restore_or_skip)
+                    list_handler(message)
 
-                for el in random_pls:
-                    if message.text.startswith(el):
-                        from Processors.Lists.lists import random_item
-                        random_item(user_id, list_name, message)
-                        bot.send_message(message.chat.id, 'Готово!')
-                        time.sleep(2)
-                        bot.send_message(message.chat.id, '/lists')
+                if send_mess == 'Ваша корзина пуста':
+                    time.sleep(1.5)
+                    list_handler(message)
+                else:
+                    bot.register_next_step_handler(message, restore)
 
+            elif message.text.startswith('Новый список') or message.text.startswith('новый список'):
+                '''Отрабатывает создание нового списка'''
 
-            if send_mess.startswith('У вас нет списка'):
-                time.sleep(1.5)
-                messages(message)
+                send_mess = 'Какое будет название списка?'
+                bot.send_message(message.chat.id, send_mess)
+
+                def new_list_creation(message):
+                    list_name = message.text
+                    send_mess = f'Отлично, список {list_name} почти готов. Чтобы наполнить его, пиши элементы, ' \
+                                f'каждый с новой строки'
+                    bot.send_message(message.chat.id, send_mess)
+
+                    def new_list_elements(message):
+                        '''Завершает создание нового списка. Кидает подтверждение создания, содержание нового списка и
+                        возвращается в начало меню списка'''
+                        from Processors.Lists.lists import new_list, items_in_list
+
+                        send_mess = new_list(user_id, list_name, message)
+                        bot.send_message(message.chat.id, send_mess)
+                        time.sleep(1.5)
+
+                        send_mess = items_in_list(user_id, list_name, True)
+                        bot.send_message(message.chat.id, send_mess)
+                        time.sleep(1.5)
+
+                        list_handler(message)
+
+                    bot.register_next_step_handler(message, new_list_elements)
+                bot.register_next_step_handler(message, new_list_creation)
+
             else:
-                bot.register_next_step_handler(message, items_handler)
+                '''Отрабатывает в случае, если триггеры не были активированы. Показывает содержание списка, имеет свои
+                триггеры, которые работают с элементами списка. Если триггеры выше не сработали, и триггеры ниже
+                тоже не сработают, то выйдет из меню списков и передаст сообщение в менеджер общения'''
+                from Processors.Lists.lists import items_in_list
 
-    bot.register_next_step_handler(message, what_to_do)
+                send_mess, list_name = items_in_list(user_id, message.text)
+                bot.send_message(message.chat.id, send_mess)
+
+                def items_handler(message):
+                    '''Проверяет, есть ли триггеры для работы с элементами списка'''
+
+                    for el in del_pls:
+                        '''Удаление элемента'''
+                        if message.text.startswith(el):
+                            from Processors.Lists.lists import delete_items
+
+                            send_mess = delete_items(user_id, message.text, list_name)  # удаляет элемент, готовит ответ
+                            bot.send_message(message.chat.id, send_mess)
+                            time.sleep(1.5)
+                            list_handler(message)
+                            return  # нужен, так как мы в цикле. Цикл нужно сломать (мы уще и в функции)
+
+                    for el in add_pls:
+                        '''Добавление элемента'''
+                        if message.text.startswith(el):
+                            from Processors.Lists.lists import add_items
+
+                            send_mess = add_items(user_id, message.text, list_name)
+                            bot.send_message(message.chat.id, send_mess)
+                            time.sleep(1.5)
+
+                            list_handler(message)
+                            return
+
+                    for el in basket:
+                        '''Триггер на проверку корзины конкретного списка'''
+
+                        if message.text.startswith(el):
+                            from Processors.Lists.lists import basket_items
+
+                            send_mess = basket_items(user_id, list_name)  # смотрит элементы в корзине списка
+                            bot.send_message(message.chat.id, send_mess)
+
+                            if send_mess.endswith('пуста'):
+                                '''Работает в случае, если корзина этого списка пуста'''
+                                send_mess = '/lists'
+                                bot.send_message(message.chat.id, send_mess)
+
+                            def restore_or_skip(message):
+                                '''Находясь в корзине списка, проверяет, есть ли триггер к восстановлению элемента'''
+
+                                for el in restore_pls:
+                                    if message.text.startswith(el):
+                                        from Processors.Lists.lists import restore_items
+
+                                        send_mess = restore_items(user_id, list_name, message.text)
+                                        bot.send_message(message.chat.id, send_mess)
+                                        time.sleep(1.5)
+
+                                        list_handler(message)
+                                        return
+
+                                list_handler(message)
+
+                            bot.register_next_step_handler(message, restore_or_skip)
+
+                    for el in random_pls:
+                        '''Триггер на рандомный элемент в списке'''
+
+                        if message.text.startswith(el):
+                            from Processors.Lists.lists import random_item
+
+                            '''random_item сам отправляет сообщение и делает все, что нужно. Остается только
+                            предложить пользователю вернуться в начало меню'''
+                            random_item(user_id, list_name, message)
+                            time.sleep(2)
+                            bot.send_message(message.chat.id, '/lists')
+
+
+                if send_mess.startswith('У вас нет списка'):
+                    '''Выход из меню списков. Работает, если не не удалось найти списка с нужным именем'''
+                    time.sleep(1.5)
+                    messages(message)
+                else:
+                    bot.register_next_step_handler(message, items_handler)
+
+        bot.register_next_step_handler(message, what_to_do)
 
 
 @bot.message_handler(commands=['name'])
