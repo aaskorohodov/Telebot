@@ -85,7 +85,12 @@ def timer_time(call, v):
 
 
 def keyboard():
+    '''Собирает клавиатуру. Выстраивает 4 ряда, в каждом по 3 кнопки + кнопка Start + еще чето там.
+    Каждая кнопка имеет свою callback_data – это информация, которая будет передана в объекте call (telebot). Она нужна
+    для обработки нажатия, чтобы отличать одну кнопку от другой и выполнять разные действия на разные кнопки.'''
+
     markup = telebot.types.InlineKeyboardMarkup()
+
     markup.row(telebot.types.InlineKeyboardButton(text='1', callback_data="1"),
                telebot.types.InlineKeyboardButton(text='2', callback_data="2"),
                telebot.types.InlineKeyboardButton(text='3', callback_data="3"))
@@ -101,17 +106,31 @@ def keyboard():
     markup.row(telebot.types.InlineKeyboardButton(text='start', callback_data="start"))
 
     return markup
+
+
 markup = keyboard()
 
 
 def timer_step1(message, name):
+    '''Первый шаг таймера. Занимается отправкой клавиатуры и первого сообщения таймера'''
+
     send_mess = f'Привет {name}\n' \
                 f'Я таймер'
     log(message.text, message.from_user.username, send_mess)
+
+    # передает markup, который является клавиатурой. markup собирается чуть выше, своей функцией
     bot.send_message(message.from_user.id, send_mess, reply_markup=markup)
+
+    # после отправки клавиатуры, обработчик callback_query_handler в основном теле Бота импортирует timer_pross (ниже),
+    # которая уже занимается таймером
 
 
 def timer_pross(call):
+    '''Занимается предпусковым обслуживанием таймера, то есть отвечает за нажатия на кнопки и
+    проверяет корректность введенного времени. После пуска, за работу таймера отвечает timer_time (в самом верху).
+    Функция принимает объект call, из которого можно достать инфу о нажатой кнопке'''
+
+    # первое условие проверяет, была ли нажат кнопка, относящаяся к таймеру (обработчик нажатия кнопок 1 на всего бота)
     call_data_data = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ':', 'del', 'start']
     if call.data in call_data_data:
         global value, old_value, data
