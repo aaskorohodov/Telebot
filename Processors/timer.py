@@ -13,34 +13,63 @@ old_value = ''
 data = ''
 
 
-def timer_time(call, v):
+def reset():
+    '''Сбрасывает значения, чтобы при повторном вызове таймера кнопка start не запустила сходу старый таймер
+    *проверено, без этого запускается старый таймер (предыдуще записанное значение секунд:минут)'''
     global value, old_value, data
+
+    value = ''
+    old_value = ''
+    data = ''
+
+
+def timer_time(call, v):
+    '''Сам механизм таймера. Проверяет, чтобы введенное значение можно было интерпретировать как время и ведет отсчет'''
+    global value, old_value, data
+
+    # what_is_it запоминает, что ввел пользователь, чтобы потом отправить это ему в одном из сценариев
     what_is_it = v
+
+    # разбиваем на введенное значение на список, чтобы убедится, что пользователь ввел что надо
     v = v.split(':')
+
     if len(v) < 2:
+        '''Сценарий, когда пользователь забыл поставить двоеточие (:). На "дисплее" в этом случае вылазит вопросик
+        *в конце заново кидаем reply_markup=markup, потому что иначе сообщение изменится, но клавиатура пропадет'''
+
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='?', reply_markup=markup)
         bot.send_message(call.message.chat.id, f'Используйте формат мм:сс, или м:с, или м:ссссс...\n'
                                                f'В общем добавьте ":" а то ниче непонятно – {what_is_it} чего?')
-        value = ''
-        old_value = ''
-        data = ''
+
+        # обнуляем введенные ранее значения
+        reset()
+
     elif len(v) > 2:
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='?',
-                              reply_markup=markup)
+        '''Сценарий, когда пользователь поставил слишком много двоеточий'''
+
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='?', reply_markup=markup)
         bot.send_message(call.message.chat.id, f'Слишком много ::::')
-        value = ''
-        old_value = ''
-        data = ''
+        reset()
 
     else:
+        '''Сценарий, когда двоеточий нормальное количество, следовательно введенное значение можно интерпретировать'''
+
+        # убираем клавиатуру и выводим сообщение Ready, ждем секунду, чтобы успеть прочитать сообщение
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Ready')
         time.sleep(1)
 
+        # считаем сколько всего секунд навводили, затем divmod делит это число на 60, возвращает число минут и остаток
+        # остаток равняется секундам. Получаются минуты и секунды, которые таймер должен работать
         secs = (int(v[0]) * 60) + int(v[1])
-        secs = int(secs)
         m, s = divmod(secs, 60)
+
+        # done нужна, чтобы после работы таймера отправить пользователю "прошло done времени"
         done = '{:02d} минут {:02d} секунд'.format(m, s)
+
         if secs > 3600:
+            '''Сценарий, когда времени набралось на час или более. Тут мы слегка издеваемся над пользователем,
+            а затем начинаем таймер. При этом таймер пропускает то время, что мы издевались над пользователем'''
+
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'{done}?')
             time.sleep(2)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
@@ -53,23 +82,33 @@ def timer_time(call, v):
                                   text='Поехали!')
             time.sleep(1)
 
+            # пропускаем время, потраченное на сообщения выше
             secs = secs - 7
 
             while secs != -1:
+                '''Цикл работает, пока время не станет меньше 0. Ноль тоже считается за секунду, это корректно – 
+                – когда стрелка прошла ниже 1 секунды, ей все равно надо время, чтобы упереться в фактический ноль.
+                Или когда на дисплее с миллисекундами число секунд = 0, у нас все равно есть еще ~1 секунда до нуля'''
+
+                # считаем дни, часы, минуты секунды
                 m, s = divmod(secs, 60)
                 h, m = divmod(m, 60)
                 d, h = divmod(h, 24)
+
+                # готовим строку с оставшимся временем, меняем ее раз в секунду
                 min_sec = 'дни {:02d} часы {:02d} минуты {:02d} секунды {:02d}'.format(d, h, m, s)
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=min_sec)
                 time.sleep(1)
                 secs -= 1
 
+            # по завершению цикла while отправляем сообщение. Полезно, если вы закрыли телеграм на время таймера
             bot.send_message(call.message.chat.id, f'Готово! Прошло {done}\n'
                                                    f'Еще? /timer')
-            value = ''
-            old_value = ''
-            data = ''
+            reset()
+
         else:
+            '''Сценарий, при котором таймер будет работать менее часа. Тут нет издевательств над пользователем,
+            а строка выглядит покороче. В остальном все идентично.'''
             while secs != -1:
                 m, s = divmod(secs, 60)
                 min_sec = '{:02d}:{:02d}'.format(m, s)
@@ -79,9 +118,7 @@ def timer_time(call, v):
 
             bot.send_message(call.message.chat.id, f'Готово! Прошло {done}\n'
                                                    f'Еще? /timer')
-            value = ''
-            old_value = ''
-            data = ''
+            reset()
 
 
 def keyboard():
@@ -160,21 +197,40 @@ def timer_pross(call):
             '''Сценарий, при котором на дисплее уже что-то есть'''
 
             if data != 'start' and data != 'del':
+                '''Сценарий записи значения на дисплей. Работает в любом случае, кроме кнопки start и del.
+                Тут мы просто записываем нажатую кнопку (плюсуем ее к тексту на дисплее). Вывод на дисплей (изменение
+                сообщение) случится дальше.'''
                 value += data
+
             elif data == 'del':
+                '''Удаление данных с дисплея. Убирается по 1 символ с конца. Мы находимся в блоке, где на дисплее уже
+                что-то есть (т.е. нам есть что удалять, все нормально)'''
                 value = value[0:-1]
+
                 if value == '':
+                    '''Если после удаления у нас остался пустой дисплей (удали все), то мы не можем оставить пустое
+                    сообщение (ограничение телеграма). Поэтому мы заменяем сообщение на смайлик, при этом переменная
+                    value остается пустой – value является лишь представление того, что сейчас на дисплее'''
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=':)', reply_markup=markup)
 
             if value != old_value and value != '':
+                '''Блок проверяет, что предыдущее значение на дисплее не равно текущему. Это может случится, если
+                дисплей пустой, и мы нажали del. В этом случае нам нельзя изменять сообщение – телеграм выдаст ошибку.
+                В ином случае работает этот if и меняет сообщение.
+                *Этот блок является артефактом, теоретически сюда нельзя прийти с ситуацией, когда мы пытаемся удалить
+                ничего, но на всякий случай'''
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=value, reply_markup=markup)
 
+            # после всего этого запоминаем текущее состояние дисплея как old_value.
             old_value = value
 
             if data == 'start' and value != '':
+                '''Запуск таймера. Срабатывает только если на дисплее хоть что-то есть.'''
                 timer_time(call, value)
 
             if data == 'start' and value == '':
+                ''' "Запуск таймера" в ситуации пустого дисплея. Первая строчка убирает клавиатуру'''
+
                 bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='00:00')
                 bot.send_message(call.message.chat.id, f'Готово! Прошло 00 минут 00 секунд. Это было быстро, неправда ли? '
