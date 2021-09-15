@@ -133,30 +133,43 @@ def letters_counter(text):
 
 
 def age(birth_date):
+    '''Считает, сколько осталось до дня рождения, готовит немного разные сообщения на разные случаи.
+    Также проверяет, корректную ли дату ввел пользователь'''
     from datetime import date
 
+    # test тестирует, корректную ли дату ввел пользователь
     test = birth_date.split()
 
     try:
+        '''Пробуем превратить каждый элемент testa в число.'''
         for el in test:
             int(el)
     except:
         return 'Что-то не то, попробуй еще раз /b_day'
 
     if len(test) != 3:
+        '''Проверяем, что введено 3 числа (год, день, месяц)'''
         return 'Что-то не то, попробуй еще раз /b_day'
 
-    send_mess = ''
 
     try:
+        '''Спрашиваем у модуля date-time, существует ли такая дата'''
         birth_date = date(int(test[0]), int(test[1]), int(test[2]))
     except:
         return 'Такой даты не существует. /b_day'
 
+    # готовим send_mess, которая станет ответом, сегодняшнею дату и считаем возраст человека
+    send_mess = ''
     today = date.today()
-
     age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+    '''
+    При подсчете возраста используется хитрая штука (today.month, today.day) < (birth_date.month, birth_date.day)
+    Мы вычитаем сравнение, что возможно – сравнение вернет True либо False, первое равняется 1 другое 0, мы буквально
+    можем вычесть True/False из int, это дозволено логикой питона.
+    Это нужно, чтобы определить, был ли ДР в этом году (родился 2000, сейчас 2001 – ему еще 0 или уже 1?)
+    '''
 
+    # проверяем, родился ли человек или может он очень стар. Если еще не родился, то сразу return
     if age < 0:
         return 'Это существо еще не родилось. /b_day'
     if age > 80:
@@ -164,15 +177,21 @@ def age(birth_date):
     else:
         send_mess += f'Возраст: {age} лет\n'
 
+    # next_birthday еще не готова. Может быть сценарий, что в этом году ДР уже был. Это пофиксит ближайший if
     next_birthday = date(today.year, birth_date.month, birth_date.day)
+    this_year_bday = date(today.year, birth_date.month, birth_date.day)
     send_mess += f'Следующий день рождения: {next_birthday}\n'
 
-    this_year_bday = date(today.year, birth_date.month, birth_date.day)
+    # проверяем, был ли уже ДР в этом году. Если да, то плюсуем 1 к дате следующего ДР (фиксит)
     if today > this_year_bday:
         next_birthday = date(today.year + 1, birth_date.month, birth_date.day)
+
+    # delta это остаток до следующего дня рождения
     delta = next_birthday - today
 
-    if delta.days < 10:
+    if delta.days == 0:
+        return 'ЭТО СЕГОДНЯ!!!'
+    elif delta.days < 10:
         send_mess += f'Дней до следующего дня рождения: {delta.days}! Торопитесь с подарком!\n'
     else:
         send_mess += f'Дней до следующего дня рождения: {delta.days}\n'

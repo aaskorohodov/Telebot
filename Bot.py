@@ -2,11 +2,18 @@ import random, time, telebot
 from telebot import types
 from Processors.log import log
 from Processors.user_recognition import user_recognition
-'''Telebot работает на декораторах. Получая сообщение, Бот идет сверху вниз, проверяя, подходит ли какой-то декоратр
+'''
+Telebot работает на декораторах. Получая сообщение, Бот идет сверху вниз, проверяя, подходит ли какой-то декоратор
 для полученного сообщения. Тут могут быть как команды (/start/help...) так и сообщения другого типа, например простой
-текст, картинки, файлы итд. Если Бот уткнулся на подходящий декоратор, то проверять следующие он уже не будет, как
-следствие, логику обработку того/иного сообщения или команды нужно прописывать внутри декоратора. Поэтому часть кода
-унесены во вспомогательные файлы, иначе слишком много строчек.'''
+текст, картинки, файлы итд. Если Бот уткнулся на подходящий декоратор, то проверять следующие уже не будет, как
+следствие, логику обработки того/иного сообщения или команды нужно прописывать внутри декоратора. Поэтому часть кода
+унесены во вспомогательные файлы, иначе слишком много строчек.
+
+В некоторых метах используется bot.register_next_step_handler вместо простого вызова функции. Это нужно, чтобы передать
+в вызываемую функцию какое-то сообщение от пользователя. Например, когда сработал декоратор, то Бот может попросить
+дополнительную информацию у пользователя. Когда информация получена, бот передаст сообщение в вызываемую функцию
+как раз с помощью bot.register_next_step_handler
+'''
 
 
 bot = telebot.TeleBot('1879041775:AAG14Vz9P4AP4hjOGOOwYKbbFJGFSrWQEgs')
@@ -70,8 +77,9 @@ def send_welcome(message):
 @bot.message_handler(commands=['stuff', 'reversed', 'popka', 'time', 'pics', 'weather', 'food', 'covid', 'anagramm',
                                'letters', 'timer', 'test', 'b_day', 'translate', 'ru_eng', 'eng_ru'])
 def staff_handler(message):
-    '''Отвечает за всякие штуки (stuff, очепятка). Работает на if/elif, каждое из которых обрабатывает свою команду.
-    name используется, что (местами) персонализировано отвечать'''
+    '''Отвечает за всякие штуки (stuff, очепятка). Работает на if/elif, каждое из которых обрабатывает свою команду,
+    Но весь модуль (декоратор) откликается на весь перечень команд.
+    *name используется, чтобы (местами) персонализировано отвечать'''
 
     name = user_recognition(message.from_user.id)
 
@@ -215,6 +223,8 @@ def staff_handler(message):
         # метод send_message берет не только сообщение, но и подготовленную разметку, которую кидает после сообщения
         bot.send_message(message.from_user.id, send_mess, reply_markup=markup)
 
+        # вся дальнейшая работа фичи реализована в callback_query_handler, внизу Бота
+
     elif message.text == '/covid':
         '''Парсер, собирает информацию о Ковиде'''
         log(message.text, message.from_user.username)
@@ -259,13 +269,16 @@ def staff_handler(message):
         bot.register_next_step_handler(message, letters)
 
     elif message.text == '/timer':
-        '''Ставит таймер. Таймер работает поверх сообщений, то есть можно поставить таймер и продолжит общение'''
+        '''Ставит таймер. Таймер работает поверх сообщений, то есть можно поставить таймер и продолжит общение
+        Функционал полностью в своем файле, включая отправку сообщений'''
         from Processors.timer import timer_step1
 
         name = user_recognition(message.from_user.id)  # для персонального ответа
         timer_step1(message, name)
 
     elif message.text == '/b_day':
+        '''Показывает, сколько времени осталось до дня рождения'''
+
         send_mess = f'Тут можно узнать, когда у кого-то будет следующий день рождения.\n' \
                     f'\n' \
                     f'Введи дату рождения в формате [Год Месяц День] через пробелы'
@@ -273,7 +286,9 @@ def staff_handler(message):
         bot.send_message(message.from_user.id, send_mess)
 
         def birthday(message):
+            '''age() самостоятельно проверяет введенную дату и готовит ответное сообщение'''
             from Processors.stuff import age
+
             send_mess = age(message.text)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.from_user.id, send_mess)
@@ -281,22 +296,28 @@ def staff_handler(message):
         bot.register_next_step_handler(message, birthday)
 
     elif message.text == '/translate':
+        '''Это первый ответ на фичу-переводчик. Тут в пользователя лишь кидается предложение выбрать язык перевода'''
+
         send_mess = '/ru_eng\n' \
                     '/eng_ru'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.from_user.id, send_mess)
 
     elif message.text == '/ru_eng':
+        '''Переводит с русского на английский. Работает на API от ABBYY, все (и описание) внутри файла этого модуля'''
+
         send_mess = 'Могу перевести слово или простую фразу. Пиши'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.from_user.id, send_mess)
 
         def ru_eng(message):
             from Processors.translation import ru_eng
+
             send_mess = ru_eng(message)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.from_user.id, send_mess)
             time.sleep(2)
+
             send_mess = 'Еще?\n' \
                         '/ru_eng\n' \
                         '/eng_ru'
@@ -327,7 +348,12 @@ def staff_handler(message):
 
 @bot.message_handler(commands=['math', 'calc', 'area', 'bmi', 'fib'])
 def math_handler(message):
+    '''Обрабатывает команды модуля math. Декоратор откликается на весь перечень своих команд, а за обработку конкретной
+    команды отвечает if'''
+
     if message.text == '/math':
+        '''Общий ответ на модуль math. Кидает доступные фичи'''
+
         send_mess = 'Это матиматический модуль. Вот что я умею:\n' \
                     '\n' \
                     '/calc – калькулятор\n' \
@@ -346,13 +372,20 @@ def math_handler(message):
         bot.send_message(message.chat.id, send_mess)
 
         def calc_pros(message):
+            '''Сам обработчик калькулятора'''
+
             if message.text in stop:
+                '''Закрытие калькулятора'''
+
                 send_mess = 'Калькулятор закрыт.\n' \
                             '/start для продолжения'
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.from_user.id, send_mess)
+
             else:
+                '''Калькулятор лежит в calc. Работает на eval'''
                 from Processors.calc import calc
+
                 send_mess = calc(message.text)
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.from_user.id, send_mess)
@@ -374,6 +407,7 @@ def math_handler(message):
                             '/start для продолжения'
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.chat.id, send_mess)
+
             else:
                 from Processors.math import area
                 send_mess = area(message.text)
@@ -384,10 +418,13 @@ def math_handler(message):
         bot.register_next_step_handler(message, area_handler)
 
     elif message.text == '/bmi':
+        '''Прежде чем посчитать BMI, Бот спрашивает вес и рост'''
+
         send_mess = 'Тут можно рассчитать индекс массы тела.'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
         time.sleep(1.5)
+
         send_mess = 'Какой у тебя рост?'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
@@ -399,8 +436,10 @@ def math_handler(message):
             bot.send_message(message.chat.id, send_mess)
 
             def weight(message):
-                weight = message.text
+                '''В BMI передает полученный вес и рост. bmi() готовит ответ.'''
                 from Processors.math import bmi
+
+                weight = message.text
                 send_mess = bmi(height, weight)
                 log(message.text, message.from_user.username, send_mess)
                 bot.send_message(message.chat.id, send_mess)
@@ -409,7 +448,7 @@ def math_handler(message):
         bot.register_next_step_handler(message, height)
 
     elif message.text == '/fib':
-        send_mess = 'Напиши номер числа фибоначи, а я покажу это число\n' \
+        send_mess = 'Напиши номер числа фибоначчи, а я покажу это число\n' \
                     '\n' \
                     '!!! Обрати внимание, что телеграмм не даст отправить слишком большое письмо. ' \
                     'Числа по номеру свыше ~15000 могут не пройти'
@@ -417,7 +456,9 @@ def math_handler(message):
         bot.send_message(message.chat.id, send_mess)
 
         def fib_call(message):
+            '''Очень простой способ, реализован в своем файле'''
             from Processors.math import fib
+
             send_mess = fib(message)
             log(message.text, message.from_user.username, send_mess)
             bot.send_message(message.chat.id, send_mess)
@@ -428,6 +469,7 @@ def math_handler(message):
 @bot.message_handler(commands=['lists'])
 def list_handler(message):
     '''Ворочает списками. Ниже 5 списков = слова-триггеры (команды) и user_id (чтобы показывать только ваши списки)'''
+
     basket = ['Корзина', 'корзина', 'rjhpbyf', 'Rjhpbyf']
     restore_pls = ['Восстанови', 'восстанови', 'Востанови', 'востанови', 'восстановить', 'Восстановить', 'востановить', 'Востановить']
     del_pls = ['удали', 'Удали', 'удали:', 'Удали:', 'удалить', 'Удалить', 'удалить:', 'Удалить:', 'elfkb', 'elfkbnm', 'Elfkb', 'Elfkbnm']
@@ -436,15 +478,24 @@ def list_handler(message):
     user_id = message.from_user.id
 
     from Processors.Lists.lists import your_lists
-    send_mess = your_lists(user_id)  # возвращает готовое сообщение со списками, либо "у вас нет списков"
+
+    # возвращает готовое сообщение со списками, либо "у вас нет списков"
+    send_mess = your_lists(user_id)
     bot.send_message(message.chat.id, send_mess)
 
-    if send_mess == 'У вас нет списков, давайте сделаем их.':  # Отрабатывает ситуацию отсутсвия списков
+    # Отрабатывает ситуацию отсутствия списков. Включается, если бот не нашел списков (смотрит на сообщение Бота)
+    if send_mess == 'У вас нет списков, давайте сделаем их.':
+
+        # немного ждет с последнего сообщения, чтобы не прилетало кучей
         time.sleep(1)
+
+        # просит название списка
         send_mess = 'Какое будет название списка?'
         bot.send_message(message.chat.id, send_mess)
 
         def first_list_creation(message):
+            '''Просит элементы списка от пользователя и запоминает имя списка'''
+
             list_name = message.text
             send_mess = f'Отлично, список {list_name} почти готов. Чтобы наполнить его, пиши элементы, ' \
                         f'каждый с новой строки'
@@ -468,13 +519,17 @@ def list_handler(message):
             bot.register_next_step_handler(message, first_list_elements)
         bot.register_next_step_handler(message, first_list_creation)
 
+    # else срабатывает, если у пользователя есть списки. На этом этапе Бот уже кинул перечень списков, теперь
+    # пользователь может что-то с ними сделать, но нам нужно сообщение от пользователя с командом.
+    # поэтому в else есть register_next_step_handler, который ждет сообщения, а затем обрабатывает его блоками if
     else:
         def what_to_do(message):
             if message.text.startswith('удали') or message.text.startswith('Удали'):
                 '''Удаление списка'''
                 from Processors.Lists.lists import delete_list
 
-                send_mess = delete_list(user_id, message.text)  # перемещает список в корзину и готовит ответ
+                # перемещает список в корзину и готовит ответ
+                send_mess = delete_list(user_id, message.text)
                 bot.send_message(message.chat.id, send_mess)
                 time.sleep(1.5)  # немного ждет, затем кидает в начало списков
                 list_handler(message)
@@ -543,7 +598,7 @@ def list_handler(message):
                 bot.register_next_step_handler(message, new_list_creation)
 
             else:
-                '''Отрабатывает в случае, если триггеры не были активированы. Показывает содержание списка, имеет свои
+                '''Отрабатывает в случае, если выше if не были активированы. Показывает содержание списка, имеет свои
                 триггеры, которые работают с элементами списка. Если триггеры выше не сработали, и триггеры ниже
                 тоже не сработают, то выйдет из меню списков и передаст сообщение в менеджер общения'''
                 from Processors.Lists.lists import items_in_list
@@ -556,6 +611,7 @@ def list_handler(message):
 
                     for el in del_pls:
                         '''Удаление элемента'''
+
                         if message.text.startswith(el):
                             from Processors.Lists.lists import delete_items
 
@@ -567,6 +623,7 @@ def list_handler(message):
 
                     for el in add_pls:
                         '''Добавление элемента'''
+
                         if message.text.startswith(el):
                             from Processors.Lists.lists import add_items
 
@@ -588,6 +645,7 @@ def list_handler(message):
 
                             if send_mess.endswith('пуста'):
                                 '''Работает в случае, если корзина этого списка пуста'''
+
                                 send_mess = '/lists'
                                 bot.send_message(message.chat.id, send_mess)
 
@@ -613,10 +671,10 @@ def list_handler(message):
                         '''Триггер на рандомный элемент в списке'''
 
                         if message.text.startswith(el):
-                            from Processors.Lists.lists import random_item
-
                             '''random_item сам отправляет сообщение и делает все, что нужно. Остается только
                             предложить пользователю вернуться в начало меню'''
+                            from Processors.Lists.lists import random_item
+
                             random_item(user_id, list_name, message)
                             time.sleep(2)
                             bot.send_message(message.chat.id, '/lists')
@@ -624,6 +682,7 @@ def list_handler(message):
 
                 if send_mess.startswith('У вас нет списка'):
                     '''Выход из меню списков. Работает, если не не удалось найти списка с нужным именем'''
+
                     time.sleep(1.5)
                     messages(message)
                 else:
