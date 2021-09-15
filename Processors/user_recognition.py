@@ -1,9 +1,12 @@
 import pickle
-'''pickle используется, так как тип хранения = словарь, который лежит в txt файле'''
+
+
+'''pickle используется, так как тип хранения = словарь, который лежит в файле'''
 
 
 def user_recognition(user_id):
     '''Распознает пользователя'''
+
     try:
         with open('users.txt', 'rb') as file:
             users = pickle.load(file)
@@ -23,14 +26,19 @@ def new_user(user_id, name):
     try:
         with open('users.txt', 'rb') as file:
             users = pickle.load(file)
+
     except EOFError:
         '''На случай пустого файла'''
         users = {}
-        users[user_id] = name  # в ключ кладем id, в значение кладем имя
 
-    users[user_id] = name  # если же файл не пустой, то делаем все аналогично
+        # в ключ кладем id, в значение кладем имя
+        users[user_id] = name
 
-    with open('users.txt', 'wb') as file:  # пишем в файл
+    # если же файл не пустой, то делаем все аналогично
+    users[user_id] = name
+
+    # пишем в файл
+    with open('users.txt', 'wb') as file:
         pickle.dump(users, file)
 
 

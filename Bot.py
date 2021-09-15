@@ -35,26 +35,32 @@ def send_welcome(message):
         send_mess = 'Кажется, мы еще не знакомы! Как тебя зовут?'
         bot.send_message(message.from_user.id, send_mess)
 
-        log(message.text, message.from_user.username, send_mess)  # лог занимается записью всего, что тут происходит
+        # лог занимается записью всего, что тут происходит
+        log(message.text, message.from_user.username, send_mess)
 
         def whats_ur_name(message):
             '''Записывает имя нового пользователя в базу. excl = то, что может ввести пользователь перед своим именем'''
 
             excl = ['меня', 'зовут', 'я', 'а', 'тебя', 'как', 'звать', 'name', 'my', 'зови', 'пускай', 'будет']
-            name = ''  # строка, куда запишем имя. Затем передадим это имя в функцию new_user
 
-            for el in message.text.split():  # перебираем текст от пользователя, убираем ненужные куски
+            # строка, куда запишем имя. Затем передадим это имя в функцию new_user
+            name = ''
+
+            # перебираем текст от пользователя, убираем ненужные куски
+            for el in message.text.split():
                 if el not in excl:
                     name += el
 
-            from Processors.user_recognition import new_user  # стоит именно тут для наглядности процесса
+            # стоит именно тут для наглядности процесса
+            from Processors.user_recognition import new_user
 
             new_user(message.from_user.id, name)
             bot.send_message(message.from_user.id, 'Отлично, теперь давай начнем сначала')
             log(message.text, message.from_user.username, send_mess)
-
             time.sleep(2)
-            send_welcome(message)  # рекурсивно вызывает саму себя, чтобы теперь отработал else (ниже)
+
+            # рекурсивно вызывает саму себя, чтобы теперь отработал else (ниже)
+            send_welcome(message)
 
         bot.register_next_step_handler(message, whats_ur_name)
 
@@ -693,6 +699,8 @@ def list_handler(message):
 
 @bot.message_handler(commands=['name'])
 def name_change(message):
+    '''Меняет имя. Это функция нужна чтобы принять имя пользователя, следующая уже записывает его'''
+
     send_mess = 'Как мне тебя называть?'
     log(message.text, message.from_user.username, send_mess)
     bot.send_message(message.from_user.id, send_mess)
@@ -709,8 +717,26 @@ def name_change(message):
 
 @bot.message_handler(content_types=['text'])
 def messages(message):
-    global lists
+    '''Отвечает за общение (чат-бот)'''
     from Processors.text_respond import respond_processor
+    from Processors.user_specs_checker import user_specs_checker_atention
+
+    # извлекаем attention_status. Это 1 либо 0, показывали мы предупреждение этому пользователю или еще нет
+    attention_status = user_specs_checker_atention(message.from_user.id)
+
+    # если еще нет, то показываем. Предупреждение показывается 1 раз одному пользователю.
+    if attention_status != 1:
+        send_mess = 'Внимание! Бот обладает базой ответов, которую может использовать в некоторых случаях общения. ' \
+                    'База обучена на общении со школьниками в интернетах, так что изобилует матом, нецензурщиной ' \
+                    'и просто оборотами, которые легко можно счесть неприемлемыми. Продолжая общение с ботом вы ' \
+                    'подтверждаете, что кровоточащие глазки вас не пугают.'
+        bot.send_message(message.from_user.id, send_mess)
+        time.sleep(5)
+        send_mess = 'Модуль общения теперь активирован. Начинается общение.'
+        bot.send_message(message.from_user.id, send_mess)
+        time.sleep(2)
+
+    # затем вызывается модуль общения
     send_mess = respond_processor(message)
     log(message.text, message.from_user.username, send_mess)
     bot.send_message(message.from_user.id, send_mess)
@@ -718,6 +744,7 @@ def messages(message):
 
 @bot.message_handler(content_types=['photo'])
 def photo(message):
+    '''Включается, если пользователь отправил фото'''
     send_mess = 'О, картинка! Что мне с ней делать?'
     log(message.text, message.from_user.username, send_mess)
     bot.send_message(message.from_user.id, send_mess)

@@ -2,6 +2,9 @@ import pickle
 import random
 
 
+'''Модуль вызывается вручную при необходимости. Создает пригодный для чтения Ботом словарь ответов'''
+
+
 def dict_creation():
     file = open('C:\\Users\\Аркадий\\Pictures\\py\\Deeper_responde\\answer_databse4.txt', 'r', encoding='UTF8')
 

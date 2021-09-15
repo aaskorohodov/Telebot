@@ -1,3 +1,4 @@
 /venv/
 /.idea/
 /Processors/Lists/my_lists.db
+/Processors/Lists/users_specs.db
