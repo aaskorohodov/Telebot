@@ -1,5 +1,4 @@
-a = 10
+a = [1,2,3,4,5]
 
-while a > 0:
-    print(a)
-    a -= 1
+a = a[0:-1]
+print(a)
