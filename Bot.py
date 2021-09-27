@@ -352,7 +352,7 @@ def staff_handler(message):
         bot.register_next_step_handler(message, eng_ru)
 
 
-@bot.message_handler(commands=['math', 'calc', 'area', 'bmi', 'fib'])
+@bot.message_handler(commands=['math', 'calc', 'area', 'bmi', 'fib', 'odd_even'])
 def math_handler(message):
     '''Обрабатывает команды модуля math. Декоратор откликается на весь перечень своих команд, а за обработку конкретной
     команды отвечает if'''
@@ -365,7 +365,8 @@ def math_handler(message):
                     '/calc – калькулятор\n' \
                     '/area – площадь прямоугольника\n' \
                     '/bmi – рассчет массы тела\n' \
-                    '/fib - число фибоначи'
+                    '/fib – число фибоначи\n' \
+                    '/odd_even – четное или нечетное число'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
 
@@ -470,6 +471,40 @@ def math_handler(message):
             bot.send_message(message.chat.id, send_mess)
 
         bot.register_next_step_handler(message, fib_call)
+
+    elif message.text == '/odd_even':
+        '''Проверяет число на четное или нечетное'''
+
+        send_mess = 'Напиши число, а я проверю, четное оно или нет, используя лябда-выражение!' \
+                    '(но ты не увидишь, как я это делаю)'
+        log(message.text, message.from_user.username, send_mess)
+        bot.send_message(message.chat.id, send_mess)
+
+        def odd_even_pross(message):
+            from Processors.math import clean_text_return_number
+
+            number = clean_text_return_number(message.text)
+            '''clean_text_return_number возвращает число, очищенное от любых других символов. Если в тексте не было 
+            ни одного числа, то он вернет "Это не число", сработает блок if ниже.'''
+
+            if number == 'Это не число':
+                send_mess = 'Это не число. /odd_even'
+                log(message.text, message.from_user.username, send_mess)
+                bot.send_message(message.chat.id, send_mess)
+                return  # выходит из цикла, чтобы не вызвать код ниже
+
+            result = (lambda x: x % 2 and 'нечетное' or 'четное')(number)
+            ''' В теле лямбды сначала идет and. Ему все равно, что там лежит, он просто проверяет, истинно это или ложно
+            и возвращает последнее истинное значение, либо первое ложное. Если x % 2 = 1 (нечетное), то это истина, 
+            and вернет "нечетное, в ином случае (если x % 2 = 0) вернется 0, потому что 0 = False.
+                Затем срабатывает or, если ему досталось "нечетное", то он сравнит две истины и вернет первую. Если ему
+            передали 0, то он вернет истину (т.е. "четное"). Вот и все.'''
+
+            send_mess = f'Число {number} {result}. /odd_even'
+            log(message.text, message.from_user.username, send_mess)
+            bot.send_message(message.chat.id, send_mess)
+
+        bot.register_next_step_handler(message, odd_even_pross)
 
 
 @bot.message_handler(commands=['lists'])

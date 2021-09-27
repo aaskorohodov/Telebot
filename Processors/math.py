@@ -104,3 +104,18 @@ def fib(message):
         one, two = two, one + two
 
     return str(two)
+
+
+def clean_text_return_number(text):
+    import re  # модуль регулярных выражений
+
+    try:
+        '''Пробуем найти все числа. findall вернет список, берем первый элемент списка.'''
+        num = re.findall('\d+', text)[0]
+    except IndexError:
+        '''Если список пуст (ни одного числа не передали), вернем эту строку'''
+        return 'Это не число'
+
+    '''Переводим полученное число в int'''
+    num = int(num)
+    return num

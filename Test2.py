@@ -1,2 +1,3 @@
-a = True
-print(1 - a)
+number = 55
+result = (lambda x: x % 2 and 'нечетное' or 'четное')(number)
+print(result)
