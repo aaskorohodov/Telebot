@@ -81,7 +81,7 @@ def send_welcome(message):
 
 
 @bot.message_handler(commands=['stuff', 'reversed', 'popka', 'time', 'pics', 'weather', 'food', 'covid', 'anagramm',
-                               'letters', 'timer', 'test', 'b_day', 'translate', 'ru_eng', 'eng_ru'])
+                               'letters', 'timer', 'test', 'b_day', 'translate', 'ru_eng', 'eng_ru', 'vowel'])
 def staff_handler(message):
     '''Отвечает за всякие штуки (stuff, очепятка). Работает на if/elif, каждое из которых обрабатывает свою команду,
     Но весь модуль (декоратор) откликается на весь перечень команд.
@@ -101,7 +101,8 @@ def staff_handler(message):
                     '/letters – считает повторы букв\n' \
                     '/timer – таймер\n' \
                     '/b_day – время до дня рождения\n' \
-                    '/translate – переводчик'
+                    '/translate – переводчик\n' \
+                    '/vowel – считает гласные и согласные'
         log(message.text, message.from_user.username, send_mess)
         bot.send_message(message.chat.id, send_mess)
 
@@ -350,6 +351,21 @@ def staff_handler(message):
             bot.send_message(message.from_user.id, send_mess)
 
         bot.register_next_step_handler(message, eng_ru)
+
+    elif message.text == '/vowel':
+        send_mess = 'Давай текст, я посчитаю гласные и согласные'
+        log(message.text, message.from_user.username)
+        bot.send_message(message.from_user.id, send_mess)
+
+        def counting_vowels(message):
+            from Processors.stuff import vowel
+
+            send_mess = vowel(message.text)
+            log(message.text, message.from_user.username)
+            bot.send_message(message.from_user.id, send_mess)
+
+        bot.register_next_step_handler(message, counting_vowels)
+
 
 
 @bot.message_handler(commands=['math', 'calc', 'area', 'bmi', 'fib', 'odd_even'])

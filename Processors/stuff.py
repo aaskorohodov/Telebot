@@ -201,3 +201,60 @@ def age(birth_date):
     return send_mess
 
 
+def vowel(text):
+    ''' '''
+    original_text = text.lower()
+    vowels = 'eyuoaуеыаоэяию'
+    consonant = 'qwrtpsdfghjklzxcvbnmйцкнгшщзхъфвпрлджчсмтьб'
+    text = text.lower()
+    text = text.replace(' ', '')
+
+    all_vowels = ''
+    all_consonant = ''
+
+    for el in text:
+        if el in vowels:
+            all_vowels += el
+
+    for el in text:
+        if el in consonant:
+            all_consonant += el
+
+    def count_to_dict(all_letters):
+        dict_to_put_in = {}
+        for el in all_letters:
+            if el not in dict_to_put_in:
+                dict_to_put_in[el] = 1
+            else:
+                dict_to_put_in[el] = dict_to_put_in[el] + 1
+        return dict_to_put_in
+
+    count_vowels = count_to_dict(all_vowels)
+    count_consonant = count_to_dict(all_consonant)
+
+    res = 'Гласные:\n'
+
+    def sort_dict(my_dict):
+        nonlocal res
+        for i in range(100000):
+            for k, v in my_dict.items():
+                if v == i and k != ' ':
+                    res += f'{k}: {v}\n'
+
+    sort_dict(count_vowels)
+    res += '\nСогласные:\n'
+    sort_dict(count_consonant)
+
+    other_symbol = ''
+    for el in original_text:
+        if el not in vowels and el not in consonant:
+            other_symbol += el
+
+    if other_symbol != '':
+        other_symbols_counted = count_to_dict(other_symbol)
+        res += '\nПрочие символы:\n'
+        sort_dict(other_symbols_counted)
+
+    res += '\n\n/vowel\nИли напиши старт. Можно русскими'
+
+    return res
