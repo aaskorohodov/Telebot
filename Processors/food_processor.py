@@ -1,6 +1,7 @@
-import time
+import time_p
 import telebot
 import random
+
 from telebot import types
 
 
@@ -19,7 +20,6 @@ def food_handler(call):
 
         bot.send_message(call.message.chat.id, 'Тип еды', reply_markup=markup)
 
-
     elif call.data == 'fast':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
 
@@ -29,7 +29,6 @@ def food_handler(call):
         markup.add(h_alot, h_low)
 
         bot.send_message(call.message.chat.id, 'Сколько хотите есть?', reply_markup=markup)
-
 
     elif call.data == 'h_alot':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
@@ -52,7 +51,6 @@ def food_handler(call):
         bot.send_message(call.message.chat.id, res)
         time.sleep(5)
         bot.send_message(call.message.chat.id, 'Не годится? Попробуй еще: /food')
-
 
     elif call.data == 'h_low':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
@@ -78,9 +76,6 @@ def food_handler(call):
         bot.send_message(call.message.chat.id, res)
         time.sleep(5)
         bot.send_message(call.message.chat.id, 'Не годится? Попробуй еще: /food')
-
-
-
 
     elif call.data == 'fat':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
@@ -156,7 +151,6 @@ def food_handler(call):
         time.sleep(5)
         bot.send_message(call.message.chat.id, 'Не годится? Попробуй еще: /food')
 
-
     elif call.data == 'middle':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
 
@@ -187,7 +181,6 @@ def food_handler(call):
         time.sleep(5)
         bot.send_message(call.message.chat.id, 'Не годится? Попробуй еще: /food')
 
-
     elif call.data == 'sweet':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
 
@@ -212,7 +205,6 @@ def food_handler(call):
         time.sleep(5)
         bot.send_message(call.message.chat.id, 'Не годится? Попробуй еще: /food')
 
-
     elif call.data == 'outdoor':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
 
@@ -223,11 +215,9 @@ def food_handler(call):
 
         bot.send_message(call.message.chat.id, 'Куда хотите сходить?', reply_markup=markup)
 
-
     elif call.data == 'map_self':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, 'https://www.google.com/maps/search/%D0%B5%D0%B4%D0%B0')
-
 
     elif call.data == 'sovet':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
@@ -240,16 +230,13 @@ def food_handler(call):
 
         bot.send_message(call.message.chat.id, 'Куда идем?', reply_markup=markup)
 
-
     elif call.data == 'shit':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, 'www.google.com/maps/search/фастфуд')
 
-
     elif call.data == 'street':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, 'https://www.google.com/maps/search/%D0%95%D0%B4%D0%B0+%D0%BD%D0%B0%D0%B2%D1%8B%D0%BD%D0%BE%D1%81')
-
 
     elif call.data == 'restorant':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)

@@ -1,6 +1,9 @@
-import requests, bs4, time, telebot
-from Processors.user_recognition import user_recognition
+import bs4
+import requests
+import telebot
+import time_p
 
+from Processors.user_recognition import user_recognition
 
 # этот модуль сам отправляет сообщения, так что ему нужен доступ к Боту
 bot = telebot.TeleBot('1879041775:AAG14Vz9P4AP4hjOGOOwYKbbFJGFSrWQEgs')

@@ -1,7 +1,6 @@
 import random
 import time
 import telebot
-from telebot import types
 from Processors.log import log
 
 

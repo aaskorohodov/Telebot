@@ -1,4 +1,5 @@
 import random
+
 from Processors.user_recognition import user_recognition
 
 
@@ -51,7 +52,6 @@ def respond_processor(message):
         if el in mes:
             response += name + ', ' + random.choice(wcud_responde) + ' '
             mes = mes.replace(el, '')
-
 
     how_much = ['сколько', 'как много', 'во сколько']
     how_much_responde = ['вот столько', 'много, до**я', 'не знаю, 7?', 'штук 20', 'наверное две', 'четыре, я точно знаю что ответ 4!']
